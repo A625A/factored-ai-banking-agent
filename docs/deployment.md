@@ -4,6 +4,12 @@ Server evidence reviewed October 5, 2026, America/Guatemala (October 6 UTC in ma
 
 Public availability rechecked October 6, 2026, America/Guatemala: HTTPS root returned 200 with normal certificate validation, `/api/health/live` returned `ok`, `/api/health/ready` returned `ready`, and `/api/operations/metrics` returned 404. Those availability checks used no login or state-changing workflow. A subsequent [screenshot walkthrough](evidence.md#demo-screenshots) used the public synthetic accounts. Server metadata, source comparisons, and image identities below retain their original inspection date.
 
+## Ownership Boundary
+
+The Oracle VM, Caddy edge, frontend delivery and final deployment process are documented here as a **team outcome**, not as Andrew's sole infrastructure implementation. Andrew's independently verifiable authored work is concentrated in the backend/data/evaluation commits listed in [contributions.md](contributions.md): observability, controlled tools, handoff routing/recovery, confirmation, persistent conversations, data profiling and system evaluation.
+
+Those authored Base/BCK commits are ancestors of their respective public `main` branches. The deployed backend candidate is later than the public backend snapshot, while its exact candidate SHA is not currently retrievable from GitHub; deployment provenance therefore remains based on the saved byte comparisons and server/image evidence below.
+
 ## Public Application
 
 **Application:** [Waqi’wuqu public demo](https://factored-ai.163-192-145-116.sslip.io/).
