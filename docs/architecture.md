@@ -56,6 +56,73 @@ A generated answer, classifier confidence, queued handoff, or prepared confirmat
 
 The conversation adapter receives bounded context and returns a strict proposal. The original interface supplied an engineering stub; the learned adapter was integrated later. Session, conversation, handoff, confirmation and action records live in PostgreSQL. HTTP telemetry and model objects remain process-local. [Conversation contract](https://github.com/yehosuah/FactoredAI_BCK/blob/9ad187f73a8b642622e3c8ce55d78d0e6610f089/docs/conversations.md)
 
+## Human-Agent Routing & PostgreSQL Boundary
+
+The human handoff path is deterministic backend policy, not a learned ranking model. Model/customer context can describe the need for help, while the backend owns agent eligibility, ranking, persistence and lifecycle transitions.
+
+```mermaid
+flowchart TD
+    REQ[Customer request or model handoff proposal] --> TRIAGE[Strict typed triage]
+    TRIAGE --> FLOOR[Severity + explicit minimum experience]
+    FLOOR --> ELIG[Provisioned + Active + Digital/Hybrid]
+    ELIG --> MATCH[Language + required specialty]
+    MATCH --> SAFE[Candidates at or above safe floor]
+    SAFE --> PREMIUM{Premium segment?}
+    PREMIUM -->|yes| UPLIFT[Prefer one higher experience level]
+    PREMIUM -->|no| RANK[Rank candidates]
+    UPLIFT --> RANK
+    RANK --> ORDER[Closest suitable level → CSAT desc → agent_id]
+    ORDER --> FOUND{Safe candidate?}
+    FOUND -->|yes| ASSIGN[Assigned]
+    FOUND -->|no| REVIEW[manual_review / critical_review]
+    ASSIGN --> H[(simulator.handoffs)]
+    REVIEW --> H
+```
+
+### Persistence relationships
+
+```mermaid
+flowchart TB
+    CURRENT[(bank.current_release)] --> CUST[(bank.customers)]
+    CURRENT --> AGENTS[(bank.service_agents)]
+    USERS[(simulator.users)] --> SESS[(simulator.sessions)]
+    AUSER[(simulator.agent_users)] --> ASESS[(simulator.agent_sessions)]
+    CONV[(simulator.conversations)] --> TURNS[(conversation_turns)]
+    TURNS --> EVENTS[(conversation_events)]
+    ACTIONS[(simulator.actions)] --> CONF[(action_confirmations)]
+    CUST --> ROUTER[HandoffStore]
+    AGENTS --> ROUTER
+    SESS --> ROUTER
+    ASESS --> ROUTER
+    ACTIONS --> EVID[Verified evidence snapshot]
+    ROUTER --> H[(simulator.handoffs)]
+    EVID --> H
+    CONV -. conversation_id .-> H
+    H --> REC[(handoff_recoveries)]
+```
+
+A handoff row persists customer scope, canonical triage, accepted release, effective severity/required level, assignment, lifecycle timestamps, routing metadata, untrusted model/customer context and a verified-evidence snapshot.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued: no safe candidate
+    [*] --> Assigned: safe candidate selected
+    Queued --> Assigned: deterministic reroute
+    Assigned --> Accepted: agent accepts
+    Accepted --> Resolved: agent resolves
+    Queued --> Cancelled: customer cancels
+    Assigned --> Cancelled: customer cancels
+    Assigned --> Queued: recovery without replacement
+    Accepted --> Assigned: recovery with replacement
+    Accepted --> Queued: recovery without replacement
+    Resolved --> [*]
+    Cancelled --> [*]
+```
+
+Creation is idempotent per customer/key and commits routing plus evidence transactionally. Row/advisory locks serialize competing lifecycle changes, while release pinning prevents routing eligibility from racing an ETL publication cutover.
+
+[Detailed routing design](human-agent-routing.md)
+
 ## Model Boundary
 
 The team classifier uses character TF-IDF features and logistic regression for ten banking-support intents, trained on 280 team-authored synthetic examples. Training uses scikit-learn; serving loads exported JSON vocabulary, IDF values and coefficients. The API’s production dependency set does not require scikit-learn. Artifact validation and a numerical parity test support packaging correctness.
