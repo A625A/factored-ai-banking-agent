@@ -121,6 +121,12 @@ Creation uses a customer-scoped idempotency key and commits the routing decision
 
 Lifecycle mutations reauthenticate inside their transaction. Row locks and advisory locks serialize competing acceptance/cancellation/recovery operations. Audited recovery is available only through local/database administrative authority, records the previous assignment/routing, and is not exposed as a customer/model tool.
 
+## Deployment Connection
+
+The final public team deployment exercised this workflow end to end: customer login, Spanish conversation, explicit human handoff, agent acceptance/resolution, and customer reconnect were recorded in the saved deployment evidence. The infrastructure deployment itself remains a team outcome; this section only connects the authored routing design to the observed product flow.
+
+See [deployment.md](deployment.md) for Oracle Cloud, Caddy/HTTPS, FastAPI/PostgreSQL topology, source-versus-deployed provenance, and network boundaries.
+
 ## Why This Matters
 
 The ML layer can decide that a request needs a human, but it does not get to choose an arbitrary customer, agent, queue priority or verified fact. The backend owns those decisions and persists enough evidence to explain what happened later. That makes the handoff a human-in-the-loop **decision system** rather than a simple redirect.
